@@ -1,0 +1,45 @@
+{{ define "ios_protocol" -}}
+{{ if eq . "any" }}ip{{ else }}{{ . }}{{ end }}
+{{- end -}}
+
+{{ define "ios_port" -}}
+{{ $ports := explode (index . 0) -}}
+{{ $range := len $ports -}}
+{{ if eq $range 2 -}}
+range {{ index $ports 0 }} {{ index $ports 1 -}}
+{{ else -}}
+eq {{ index . 0 -}}
+{{ end -}}
+{{- end -}}
+
+{{- range $name, $hosts := .HostGroups -}}
+no object-group ip address {{ $name }}
+object-group ip address {{ $name }}
+{{ range $host := $hosts -}}
+host {{ $host }}
+{{ end -}}
+exit
+{{ end }}
+
+{{- range $policy, $rules := .Rules }}
+no ip access-list extended {{ $policy }}
+ip access-list extended {{ $policy }}
+permit ip any any
+{{- range $, $rule := $rules }}
+{{ if eq $rule.Action "allow" }}permit{{ else }}deny{{ end }} {{ template "ios_protocol" index $rule.Protocol 0 }}
+{{- if $rule.SourceIP }} host {{ $rule.SourceIP.GetIPAddress -}}
+{{- else }}
+{{- if $rule.SourcePrefix }} addrgroup {{ $rule.SourcePrefix -}}{{ else }} any{{ end -}}
+{{ end -}}
+{{- if $rule.SourcePorts }} {{ template "ios_port" $rule.SourcePorts }}{{ end -}}
+{{- if $rule.DestinationIP }} host {{ $rule.DestinationIP.GetIPAddress -}}
+{{- else }}
+{{- if $rule.DestinationPrefix }} addrgroup {{ $rule.DestinationPrefix -}}{{ else }} any{{ end -}}
+{{ end -}}
+{{- if $rule.DestinationPorts }} {{ template "ios_port" $rule.DestinationPorts }}{{ end -}}
+{{- if $rule.Established }} established{{ end -}}
+{{- if $rule.Log }} log{{ end -}}
+{{ end }}
+no permit ip any any
+exit
+{{ end }}

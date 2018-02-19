@@ -1,0 +1,12 @@
+digraph d {
+{{ range $, $rules := .Rules -}}
+{{ range $, $rule := $rules -}}
+{{ range $, $proto := $rule.Protocol -}}
+{{ if $rule.SourceIP }}{{ if $rule.DestinationIP -}}
+{{- range $dport := $rule.DestinationPorts }}
+    "{{ $rule.SourceIP.GetIPAddress }}" -> "{{ $rule.DestinationIP.GetIPAddress }}" [label="{{ $proto }}/{{ $dport }}"]
+{{- end }}{{ end }}{{ end }}
+{{- end }}
+{{- end }}
+{{- end }}
+}

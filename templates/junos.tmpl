@@ -1,0 +1,53 @@
+{{ define "junos_rule" }}
+{{ end }}
+
+
+{{- range $name, $hosts := .HostGroups -}}
+delete policy-options prefix-list {{ $name }}
+{{ range $host := $hosts -}}
+set policy-options prefix-list {{ $name }} {{ $host }}
+{{ end }}
+{{ end }}
+
+{{- range $name, $rules := .Rules -}}
+delete firewall filter {{ $name }}
+{{ range $idx, $rule := $rules }}
+edit firewall filter {{ $name }} term {{ add $idx 1 }}
+set from{{ range $p := $rule.Protocol }} protocol {{ $p }}{{ end }}
+{{ if $rule.SourcePrefix -}}
+set from source-prefix-list {{ $rule.SourcePrefix }}
+{{ end -}}
+{{ if $rule.SourceIP -}}
+set from source-address {{ $rule.SourceIP.GetIPAddress }}
+{{- if ne $rule.SourceIP.GetNetworkSize 32 }}/{{ $rule.SourceIP.GetNetworkSize }}{{ end }}
+{{ end -}}
+{{ if $rule.SourcePorts -}}
+set from
+{{- range $p := $rule.SourcePorts }} source-port {{ $p }}{{ end }}
+{{ end -}}
+
+
+{{ if $rule.DestinationPrefix -}}
+set from destination-prefix-list {{ $rule.DestinationPrefix }}
+{{ end -}}
+{{ if $rule.DestinationIP -}}
+set from destination-address {{ $rule.DestinationIP.GetIPAddress }}
+{{- if ne $rule.DestinationIP.GetNetworkSize 32 }}/{{ $rule.DestinationIP.GetNetworkSize }}{{ end }}
+{{ end -}}
+{{ if $rule.DestinationPorts -}}
+set from
+{{- range $p := $rule.DestinationPorts }} destination-port {{ $p }}{{ end }}
+{{ end -}}
+{{ if $rule.Mirror }}set then port-mirror
+{{ end -}}
+set then {{ if eq $rule.Action "allow" }}accept{{ else }}discard{{ end }}
+{{ if $rule.Log -}}
+set then log
+{{ end -}}
+top
+{{ if $rule.Log -}}
+set firewall filter {{ $name }} term DROP_ALL then syslog
+set firewall filter {{ $name }} term DROP_ALL then discard
+{{ end -}}
+{{ end }}
+{{ end }}
